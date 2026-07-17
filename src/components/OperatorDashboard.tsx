@@ -2,7 +2,8 @@ import React, { useState, useMemo, FormEvent } from 'react';
 import { 
   ChevronLeft, Wrench, Search, Plus, CheckSquare, Clipboard, 
   Send, ShieldAlert, Check, RefreshCw, Eye, Sparkles, BookOpen, 
-  User, Car, Phone, Calendar, ArrowRight, TrendingUp, HelpCircle
+  User, Car, Phone, Calendar, ArrowRight, TrendingUp, HelpCircle,
+  Copy, Printer
 } from 'lucide-react';
 import { Product, ServiceBase, ServicePackage, Operator, Client, Vehicle, Order, ChecklistVisual } from '../types';
 
@@ -41,6 +42,34 @@ export default function OperatorDashboard({
 
   // Tab navigation
   const [activeTab, setActiveTab] = useState<'pos' | 'clients' | 'vehicles' | 'reminders'>('pos');
+  const [copiedText, setCopiedText] = useState(false);
+
+  // Active Work Bays
+  const [activeBays, setActiveBays] = useState<{
+    id: string;
+    name: string;
+    plates: string;
+    brand: string;
+    model: string;
+    status: 'vacio' | 'inspeccion' | 'aceite' | 'ajustes' | 'listo';
+    timeStarted: string;
+  }[]>(() => {
+    const saved = localStorage.getItem('le_active_bays');
+    return saved ? JSON.parse(saved) : [
+      { id: 'b1', name: 'Bahía 1 (Rampa Principal)', plates: 'NMX-45-89', brand: 'Toyota', model: 'Corolla', status: 'inspeccion', timeStarted: '15:30' },
+      { id: 'b2', name: 'Bahía 2 (Fosa de Servicio)', plates: '', brand: '', model: '', status: 'vacio', timeStarted: '' },
+      { id: 'b3', name: 'Bahía 3 (Lavado y Ajustes)', plates: 'VVF-98-76', brand: 'Chevrolet', model: 'Aveo', status: 'listo', timeStarted: '17:10' }
+    ];
+  });
+
+  // Save active bays state
+  React.useEffect(() => {
+    localStorage.setItem('le_active_bays', JSON.stringify(activeBays));
+  }, [activeBays]);
+
+  // Drawer for managing specific bay
+  const [selectedBayId, setSelectedBayId] = useState<string | null>(null);
+  const [bayForm, setBayForm] = useState({ plates: '', brand: '', model: '', status: 'vacio' as any });
 
   // Search States
   const [clientSearchQuery, setClientSearchQuery] = useState('');
@@ -284,6 +313,113 @@ export default function OperatorDashboard({
     setStep(1);
   };
 
+  const handleCopyTicketText = (order: Order) => {
+    // Compile products
+    const productsList = order.products.map(p => {
+      const prod = products.find(prodObj => prodObj.id === p.productId);
+      return `  - ${p.quantity}x ${prod?.name || 'Insumo'} ($${p.sellPrice * p.quantity})`;
+    }).join('\n');
+
+    // Compile services
+    const servicesList = order.services.map(sId => {
+      const srv = services.find(s => s.id === sId);
+      return `  - 🔧 ${srv?.name || 'Mano de obra'} ($${srv?.basePrice || 0})`;
+    }).join('\n');
+
+    const text = `🚗 *LUBRICACIÓN EXPRESS* 💨
+----------------------------------------
+*Reporte de Servicio Digital*
+📍 Ticket ID: ${order.id}
+📅 Fecha: ${order.date}
+👤 Cliente: ${order.clientName}
+📱 Teléfono: ${order.clientPhone}
+🚗 Vehículo: ${order.vehicleBrand} ${order.vehicleModel} (${order.vehicleYear})
+🏁 Placas: ${order.plates}
+⚙️ Kilometraje: ${order.mileage.toLocaleString()} KM
+----------------------------------------
+*Diagnóstico del Semáforo:*
+💡 Luces & Faros: ${order.checklist.luces}
+🛞 Llantas: ${order.checklist.llantas}
+🧪 Niveles de Fluidos: ${order.checklist.niveles}
+🛑 Estado de Frenos: ${order.checklist.frenos}
+${order.checklist.extraNotes ? `📝 Notas extra: ${order.checklist.extraNotes}` : ''}
+----------------------------------------
+*Detalle del Servicio:*
+${productsList || '  - Sin productos'}
+${servicesList || '  - Sin servicios base'}
+----------------------------------------
+💳 Pago total (${order.paymentMethod}): $${order.totalPaid} MXN
+----------------------------------------
+🔔 *PRÓXIMA VISITA SUGERIDA:*
+🏁 Kilometraje: ${order.nextServiceMileage.toLocaleString()} KM
+📅 Fecha estimada: ${order.nextServiceDate}
+----------------------------------------
+¡Gracias por tu preferencia! 🛠️`;
+
+    navigator.clipboard.writeText(text).then(() => {
+      setCopiedText(true);
+      setTimeout(() => setCopiedText(false), 2500);
+    }).catch(err => {
+      console.error('Failed to copy text: ', err);
+    });
+  };
+
+  const handleSimulatedPrint = () => {
+    alert("🖨️ Conexión con Impresora Térmica\n\nSimulando impresión de ticket térmico de 80mm de Lubricación Express...\n¡Enviado a cola de impresión local!");
+  };
+
+  // Active Work Bays Handlers
+  const handleOpenBaySettings = (bay: any) => {
+    setSelectedBayId(bay.id);
+    setBayForm({
+      plates: bay.plates,
+      brand: bay.brand,
+      model: bay.model,
+      status: bay.status
+    });
+  };
+
+  const handleSaveBaySettings = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedBayId) return;
+    
+    setActiveBays(prev => prev.map(b => {
+      if (b.id === selectedBayId) {
+        const isNowVacio = bayForm.status === 'vacio';
+        const now = new Date();
+        const timeString = now.toTimeString().split(' ')[0].substring(0, 5);
+        return {
+          ...b,
+          plates: isNowVacio ? '' : bayForm.plates.toUpperCase().trim(),
+          brand: isNowVacio ? '' : bayForm.brand,
+          model: isNowVacio ? '' : bayForm.model,
+          status: bayForm.status,
+          timeStarted: b.plates === '' && bayForm.plates !== '' ? timeString : b.timeStarted || timeString
+        };
+      }
+      return b;
+    }));
+    setSelectedBayId(null);
+  };
+
+  const handleClearBay = (bayId: string) => {
+    setActiveBays(prev => prev.map(b => b.id === bayId ? { ...b, plates: '', brand: '', model: '', status: 'vacio', timeStarted: '' } : b));
+  };
+
+  const handleStartPOSFromBay = (bay: any) => {
+    // 1. Set vehicle values
+    setPlates(bay.plates);
+    setBrand(bay.brand);
+    setModel(bay.model);
+    
+    // 2. Perform autolookup logic
+    handleLookupPlates(bay.plates);
+    
+    // 3. Switch view
+    setActiveTab('pos');
+    setStep(1);
+  };
+
   // Interactive Product Selector for Custom Insumos
   const handleAddCustomProduct = (productId: string) => {
     if (!productId) return;
@@ -509,11 +645,102 @@ export default function OperatorDashboard({
                 <span className="text-zinc-600">Checklist & Servicios</span>
                 <span className="text-zinc-700">/</span>
                 
-                <span className={`px-2.5 py-1 rounded-md font-mono font-bold ${
+                 <span className={`px-2.5 py-1 rounded-md font-mono font-bold ${
                   step === 3 ? 'bg-emerald-500 text-zinc-950' : 'bg-zinc-800 text-zinc-500'
                 }`}>3</span>
                 <span className="text-zinc-600">Ticket</span>
               </div>
+
+              {/* SECCIÓN PRO: BAHÍAS DE TRABAJO (MONITOREO EN TIEMPO REAL) */}
+              {step === 1 && (
+                <div className="bg-zinc-900/60 border border-zinc-800/80 rounded-xl p-4 space-y-3 shadow-md">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-200">Bahías de Servicio en Taller</h3>
+                    </div>
+                    <span className="text-[10px] text-zinc-500 font-mono">ESTADO DE RAMPAS / FOSAS</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {activeBays.map(bay => (
+                      <div 
+                        key={bay.id} 
+                        className={`p-3 rounded-lg border transition-all duration-250 ${
+                          bay.status === 'vacio'
+                            ? 'bg-zinc-950/20 border-zinc-850/60 hover:border-zinc-800'
+                            : bay.status === 'inspeccion'
+                              ? 'bg-amber-500/5 border-amber-500/10 hover:border-amber-500/30'
+                              : bay.status === 'aceite'
+                                ? 'bg-rose-500/5 border-rose-500/10 hover:border-rose-500/30'
+                                : bay.status === 'ajustes'
+                                  ? 'bg-sky-500/5 border-sky-500/10 hover:border-sky-500/30'
+                                  : 'bg-emerald-500/5 border-emerald-500/10 hover:border-emerald-500/30'
+                        }`}
+                      >
+                        <div className="flex justify-between items-start mb-1.5">
+                          <span className="text-[9px] font-bold text-zinc-500 font-mono uppercase truncate max-w-[110px]">{bay.name}</span>
+                          <span className={`text-[8px] px-1.5 py-0.5 rounded font-black font-mono tracking-wide ${
+                            bay.status === 'vacio'
+                              ? 'bg-zinc-800 text-zinc-500'
+                              : bay.status === 'inspeccion'
+                                ? 'bg-amber-500/10 text-amber-400'
+                                : bay.status === 'aceite'
+                                  ? 'bg-rose-500/10 text-rose-400'
+                                  : bay.status === 'ajustes'
+                                    ? 'bg-sky-500/10 text-sky-400'
+                                    : 'bg-emerald-500/10 text-emerald-400'
+                          }`}>
+                            {bay.status === 'vacio' ? 'LIBRE' : bay.status === 'inspeccion' ? 'INSPECCIÓN' : bay.status === 'aceite' ? 'ACEITE' : bay.status === 'ajustes' ? 'AJUSTES' : 'LISTO'}
+                          </span>
+                        </div>
+
+                        {bay.status === 'vacio' ? (
+                          <div className="py-2 flex flex-col items-center justify-center text-center">
+                            <span className="text-[10px] text-zinc-600 font-mono italic">Vacío</span>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenBaySettings(bay)}
+                              className="text-[9px] text-sky-400 hover:text-sky-300 font-bold flex items-center space-x-1 mt-1 cursor-pointer"
+                            >
+                              <Plus className="w-3 h-3" />
+                              <span>Asignar</span>
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="space-y-1.5">
+                            <div className="flex justify-between items-center bg-zinc-950/60 px-2 py-1 rounded border border-zinc-850">
+                              <div className="truncate pr-1">
+                                <span className="text-[10px] font-bold text-zinc-200 block truncate">{bay.brand} {bay.model}</span>
+                                <span className="text-[8px] text-zinc-500 font-mono">Inició: {bay.timeStarted}</span>
+                              </div>
+                              <span className="text-[9px] font-mono font-bold text-sky-400 bg-sky-500/10 px-1 py-0.5 rounded flex-shrink-0">{bay.plates}</span>
+                            </div>
+
+                            <div className="flex items-center justify-between">
+                              <button
+                                type="button"
+                                onClick={() => handleOpenBaySettings(bay)}
+                                className="text-[8px] text-zinc-400 hover:text-zinc-200 bg-zinc-800 hover:bg-zinc-750 px-1.5 py-0.5 rounded transition-colors font-semibold"
+                              >
+                                Editar
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleStartPOSFromBay(bay)}
+                                className="text-[8px] text-zinc-950 bg-sky-400 hover:bg-sky-300 px-1.5 py-0.5 rounded transition-all font-black flex items-center space-x-0.5"
+                              >
+                                <Wrench className="w-2.5 h-2.5" />
+                                <span>Atender POS</span>
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* STEP 1: RECEPCION AUTO Y CLIENTE */}
               {step === 1 && (
@@ -693,9 +920,75 @@ export default function OperatorDashboard({
                   <form onSubmit={handleCompleteOrder} className="space-y-5">
                     
                     {/* Visual Checklist Grid */}
-                    <div className="p-4 bg-zinc-900 border border-zinc-850 rounded-xl space-y-3.5">
-                      <span className="text-[10px] font-mono text-sky-400 uppercase tracking-wide block">1. Checklist de Entrada Rápida</span>
+                    <div className="p-4 bg-zinc-900 border border-zinc-850 rounded-xl space-y-4 shadow-inner">
+                      <span className="text-[10px] font-mono text-sky-400 uppercase tracking-wide block">1. Diagnóstico de Entrada & Checklist Rápido</span>
                       
+                      {/* DIAGRAMA INTERACTIVO DE DIAGNÓSTICO (CHASSIS WIREFRAME) */}
+                      <div className="bg-zinc-950 p-4 border border-zinc-850 rounded-lg flex flex-col md:flex-row items-center justify-between gap-6">
+                        {/* CSS Wireframe Representation of Car */}
+                        <div className="relative w-28 h-44 bg-zinc-900 rounded-2xl border-2 border-zinc-850 p-2 flex flex-col justify-between items-center shadow-inner overflow-hidden">
+                          {/* Wheels */}
+                          <div className="absolute -left-1.5 top-6 w-2 h-5 bg-zinc-800 rounded" />
+                          <div className="absolute -right-1.5 top-6 w-2 h-5 bg-zinc-800 rounded" />
+                          <div className="absolute -left-1.5 bottom-6 w-2 h-5 bg-zinc-800 rounded" />
+                          <div className="absolute -right-1.5 bottom-6 w-2 h-5 bg-zinc-800 rounded" />
+                          
+                          {/* Cabin */}
+                          <div className="absolute top-12 left-4 right-4 bottom-12 rounded-xl bg-zinc-950/80 border border-zinc-850 flex items-center justify-center">
+                            <span className="text-[7px] font-mono font-bold text-zinc-600">CHASIS (VISTA)</span>
+                          </div>
+
+                          {/* Hotspots for Luces (front), Niveles (engine), Frenos (near wheel), Llantas (wheel area) */}
+                          {/* Luces Hotspot */}
+                          <div className="absolute top-2 left-6 right-6 flex justify-between">
+                            <span className={`w-3.5 h-3.5 rounded-full flex items-center justify-center font-bold text-[8px] border transition-all duration-200 ${
+                              checklist.luces === 'OK' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/55 animate-pulse' : checklist.luces === 'Revisar' ? 'bg-amber-500/20 text-amber-400 border-amber-500/55' : 'bg-rose-500/20 text-rose-400 border-rose-500/55 animate-ping'
+                            }`}>L</span>
+                          </div>
+
+                          {/* Niveles Hotspot */}
+                          <div className="absolute top-8 left-12">
+                            <span className={`w-3.5 h-3.5 rounded-full flex items-center justify-center font-bold text-[8px] border transition-all duration-200 ${
+                              checklist.niveles === 'OK' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/55' : checklist.niveles === 'Revisar' ? 'bg-amber-500/20 text-amber-400 border-amber-500/55' : 'bg-rose-500/20 text-rose-400 border-rose-500/55'
+                            }`}>N</span>
+                          </div>
+
+                          {/* Frenos Hotspot */}
+                          <div className="absolute bottom-12 left-6">
+                            <span className={`w-3.5 h-3.5 rounded-full flex items-center justify-center font-bold text-[8px] border transition-all duration-200 ${
+                              checklist.frenos === 'OK' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/55' : checklist.frenos === 'Revisar' ? 'bg-amber-500/20 text-amber-400 border-amber-500/55' : 'bg-rose-500/20 text-rose-400 border-rose-500/55'
+                            }`}>F</span>
+                          </div>
+
+                          {/* Llantas Hotspot */}
+                          <div className="absolute bottom-6 right-6">
+                            <span className={`w-3.5 h-3.5 rounded-full flex items-center justify-center font-bold text-[8px] border transition-all duration-200 ${
+                              checklist.llantas === 'OK' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/55' : checklist.llantas === 'Revisar' ? 'bg-amber-500/20 text-amber-400 border-amber-500/55' : 'bg-rose-500/20 text-rose-400 border-rose-500/55'
+                            }`}>Ll</span>
+                          </div>
+                        </div>
+
+                        {/* Interactive Info Panel */}
+                        <div className="flex-1 space-y-1.5 self-stretch flex flex-col justify-center">
+                          <span className="text-[10px] text-zinc-500 uppercase font-bold font-mono tracking-wide">Semáforo Automático de Diagnóstico</span>
+                          <p className="text-xs text-zinc-400">Toca las categorías inferiores para alternar el estado físico de los elementos. Los estatus de riesgo alertan al cliente en el ticket térmico interactivo.</p>
+                          <div className="flex flex-wrap gap-2 pt-1">
+                            <span className="flex items-center space-x-1 text-[9px] bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded font-mono font-semibold">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                              <span>OK: Servicio Óptimo</span>
+                            </span>
+                            <span className="flex items-center space-x-1 text-[9px] bg-amber-500/10 text-amber-400 px-2 py-0.5 rounded font-mono font-semibold">
+                              <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                              <span>Revisar: Alerta Preventiva</span>
+                            </span>
+                            <span className="flex items-center space-x-1 text-[9px] bg-rose-500/10 text-rose-400 px-2 py-0.5 rounded font-mono font-semibold">
+                              <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping" />
+                              <span>Falla: Crítico</span>
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                         <div className="bg-zinc-950 p-2 border border-zinc-850 rounded-lg space-y-1 text-center">
                           <span className="block text-[10px] text-zinc-400">💡 Luces & Faros</span>
@@ -1073,17 +1366,39 @@ export default function OperatorDashboard({
                     </div>
 
                     {/* WhatsApp simulated sharing links */}
-                    <div className="pt-4 border-t border-dashed border-zinc-800 flex flex-col gap-2">
+                    <div className="pt-4 border-t border-dashed border-zinc-800 flex flex-col gap-2 font-sans">
                       <a
                         id="op-whatsapp-btn"
                         href={`https://wa.me/${completedOrder.clientWhatsApp}?text=Hola%20${encodeURIComponent(completedOrder.clientName)}%2C%20tu%20servicio%20en%20Lubricaci%C3%B3n%20Express%20est%C3%A1%20listo.%20Pr%C3%B3ximo%20servicio%3A%20${completedOrder.nextServiceMileage}%20km.%20Consulta%20tu%20historial%20completo%20aqu%C3%AD%3A%20https%3A%2F%2Flube-express.app%2Fhistorial%2F${completedOrder.plates}`}
                         target="_blank"
                         rel="noreferrer"
-                        className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-zinc-950 font-bold rounded-lg text-center flex items-center justify-center space-x-1.5 transition-colors font-sans cursor-pointer text-zinc-950"
+                        className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-zinc-950 font-bold rounded-lg text-center flex items-center justify-center space-x-1.5 transition-colors cursor-pointer"
                       >
                         <Send className="w-4 h-4 text-zinc-950" />
                         <span>Enviar por WhatsApp</span>
                       </a>
+
+                      <button
+                        type="button"
+                        onClick={() => handleCopyTicketText(completedOrder)}
+                        className={`w-full py-2 font-bold rounded-lg text-center flex items-center justify-center space-x-1.5 transition-colors cursor-pointer text-xs ${
+                          copiedText 
+                            ? 'bg-sky-500 text-zinc-950' 
+                            : 'bg-zinc-800 hover:bg-zinc-750 text-zinc-200 border border-zinc-700'
+                        }`}
+                      >
+                        <Copy className="w-4 h-4" />
+                        <span>{copiedText ? '¡Copiado con Éxito!' : 'Copiar Reporte Digital'}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={handleSimulatedPrint}
+                        className="w-full py-2 bg-zinc-800 hover:bg-zinc-750 text-zinc-200 border border-zinc-700 font-bold rounded-lg text-center flex items-center justify-center space-x-1.5 transition-colors cursor-pointer text-xs"
+                      >
+                        <Printer className="w-4 h-4" />
+                        <span>Imprimir Ticket Térmico</span>
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -1426,6 +1741,115 @@ export default function OperatorDashboard({
 
         </section>
       </main>
+
+      {/* DIÁLOGO MODAL: GESTIONAR BAHÍA DE TRABAJO */}
+      {selectedBayId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 font-sans">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-sm p-5 space-y-4 shadow-2xl relative">
+            <div className="flex justify-between items-center pb-2 border-b border-zinc-800">
+              <h4 className="text-sm font-bold text-zinc-100 uppercase font-mono">
+                {activeBays.find(b => b.id === selectedBayId)?.name}
+              </h4>
+              <button
+                type="button"
+                onClick={() => setSelectedBayId(null)}
+                className="text-zinc-500 hover:text-zinc-200 text-lg font-bold"
+              >
+                &times;
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveBaySettings} className="space-y-3.5">
+              <div>
+                <label className="block text-[10px] text-zinc-500 uppercase font-mono mb-1">Estado de la Bahía</label>
+                <select
+                  value={bayForm.status}
+                  onChange={e => setBayForm({ ...bayForm, status: e.target.value as any })}
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:border-sky-500 font-medium font-sans"
+                >
+                  <option value="vacio" className="bg-zinc-900 text-zinc-200">Vacío / Disponible</option>
+                  <option value="inspeccion" className="bg-zinc-900 text-zinc-200">Inspección Diagnóstica</option>
+                  <option value="aceite" className="bg-zinc-900 text-zinc-200">Cambio de Aceite</option>
+                  <option value="ajustes" className="bg-zinc-900 text-zinc-200">Ajustes Generales / Aditivos</option>
+                  <option value="listo" className="bg-zinc-900 text-zinc-200">Listo para Entrega</option>
+                </select>
+              </div>
+
+              {bayForm.status !== 'vacio' && (
+                <>
+                  <div>
+                    <label className="block text-[10px] text-zinc-500 uppercase font-mono mb-1">Placas del Vehículo</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Ej. NMX4589"
+                      value={bayForm.plates}
+                      onChange={e => setBayForm({ ...bayForm, plates: e.target.value.toUpperCase() })}
+                      className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-zinc-200 font-mono"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[10px] text-zinc-500 uppercase font-mono mb-1">Marca</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="Ej. Nissan"
+                        value={bayForm.brand}
+                        onChange={e => setBayForm({ ...bayForm, brand: e.target.value })}
+                        className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-zinc-200"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-zinc-500 uppercase font-mono mb-1">Modelo</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="Ej. Versa"
+                        value={bayForm.model}
+                        onChange={e => setBayForm({ ...bayForm, model: e.target.value })}
+                        className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-zinc-200"
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+
+              <div className="flex justify-between items-center pt-3 border-t border-zinc-800">
+                {bayForm.status !== 'vacio' ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleClearBay(selectedBayId);
+                      setSelectedBayId(null);
+                    }}
+                    className="text-xs text-red-400 hover:text-red-300 font-semibold"
+                  >
+                    Desocupar Bahía
+                  </button>
+                ) : <div />}
+
+                <div className="flex space-x-2">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedBayId(null)}
+                    className="px-3 py-1.5 bg-zinc-850 hover:bg-zinc-800 text-zinc-300 text-xs font-semibold rounded-lg"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-1.5 bg-sky-500 hover:bg-sky-400 text-zinc-950 text-xs font-bold rounded-lg shadow-md"
+                  >
+                    Guardar
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Bottom Navigation for Mobile / Tablet */}
       <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-slate-200 shadow-lg px-2 flex justify-around items-center h-16 md:hidden">

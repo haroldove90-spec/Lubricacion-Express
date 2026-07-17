@@ -83,6 +83,28 @@ export default function AdminDashboard({
     pinCode: ''
   });
 
+  // Expenses and Petty Cash / Caja Chica State (PRO feature)
+  const [expenses, setExpenses] = useState<{ id: string; date: string; category: string; description: string; amount: number }[]>(() => {
+    const saved = localStorage.getItem('le_expenses');
+    return saved ? JSON.parse(saved) : [
+      { id: 'e1', date: '2026-07-16', category: 'Insumos', description: 'Compra de garrafa de anticongelante urgente', amount: 320 },
+      { id: 'e2', date: '2026-07-16', category: 'Limpieza', description: 'Jabón para lavado de fosa y desengrasante', amount: 150 },
+      { id: 'e3', date: '2026-07-15', category: 'Herramientas', description: 'Llave de filtro ajustable de banda', amount: 450 }
+    ];
+  });
+
+  // Save expenses to localStorage
+  React.useEffect(() => {
+    localStorage.setItem('le_expenses', JSON.stringify(expenses));
+  }, [expenses]);
+
+  const [isAddingExpense, setIsAddingExpense] = useState(false);
+  const [expenseForm, setExpenseForm] = useState({
+    category: 'Insumos',
+    description: '',
+    amount: 0
+  });
+
   // Minimum Stock Warnings
   const lowStockProducts = useMemo(() => {
     return products.filter(p => p.stock <= p.minStock);
@@ -284,6 +306,28 @@ export default function AdminDashboard({
     }
   };
 
+  // Expenses Handlers
+  const handleSaveExpense = (e: FormEvent) => {
+    e.preventDefault();
+    if (!expenseForm.description || expenseForm.amount <= 0) return;
+
+    const newExpense = {
+      id: 'e_' + Date.now(),
+      date: '2026-07-16', // Simulation day
+      category: expenseForm.category,
+      description: expenseForm.description,
+      amount: expenseForm.amount
+    };
+
+    setExpenses(prev => [newExpense, ...prev]);
+    setIsAddingExpense(false);
+    setExpenseForm({ category: 'Insumos', description: '', amount: 0 });
+  };
+
+  const handleDeleteExpense = (id: string) => {
+    setExpenses(prev => prev.filter(exp => exp.id !== id));
+  };
+
   // REPORTS & FINANCIAL COMPUTATIONS
   const currentDay = '2026-07-16'; // Simulation Current Day from metadata
   
@@ -301,7 +345,7 @@ export default function AdminDashboard({
     return salesByPaymentMethod.Efectivo + salesByPaymentMethod.Tarjeta + salesByPaymentMethod.Transferencia;
   }, [salesByPaymentMethod]);
 
-  // Gain calculations (Venta - Costo)
+  // Gain calculations (Venta - Costo - Gastos)
   const utilityReport = useMemo(() => {
     let salesTotal = 0;
     let costTotal = 0;
@@ -311,15 +355,18 @@ export default function AdminDashboard({
       order.products.forEach(p => {
         costTotal += p.costPrice * p.quantity;
       });
-      // Simple approximate service/labor cost (estimated at 15% for miscellaneous expenses, or 0 since labor is direct gain)
     });
+
+    const totalExpenses = expenses.reduce((sum, exp) => sum + exp.amount, 0);
 
     return {
       sales: salesTotal,
       cost: costTotal,
-      profit: salesTotal - costTotal
+      grossProfit: salesTotal - costTotal,
+      totalExpenses,
+      netProfit: salesTotal - costTotal - totalExpenses
     };
-  }, [orders]);
+  }, [orders, expenses]);
 
   // Product rotation (oils & filters most sold)
   const productRotation = useMemo(() => {
@@ -1161,29 +1208,37 @@ export default function AdminDashboard({
             <div className="space-y-6">
               
               {/* Financial Metrics Row */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
                 <div className="p-4 bg-zinc-950 border border-zinc-850 rounded-xl relative overflow-hidden">
-                  <div className="text-zinc-500 text-[10px] uppercase font-mono tracking-wider">Ventas Totales (Histórico)</div>
+                  <div className="text-zinc-500 text-[10px] uppercase font-mono tracking-wider">Ventas Totales</div>
                   <div className="text-2xl font-bold font-mono text-zinc-100 mt-1">${utilityReport.sales} <span className="text-[11px] text-zinc-500">MXN</span></div>
                   <div className="text-[10px] text-zinc-400 mt-1.5 flex items-center">
                     <TrendingUp className="w-3.5 h-3.5 text-emerald-400 mr-1" />
-                    <span>Progreso del mes en curso</span>
+                    <span>Progreso del mes</span>
                   </div>
                 </div>
 
                 <div className="p-4 bg-zinc-950 border border-zinc-850 rounded-xl relative overflow-hidden">
-                  <div className="text-zinc-500 text-[10px] uppercase font-mono tracking-wider">Corte de Caja Hoy ({currentDay})</div>
-                  <div className="text-2xl font-bold font-mono text-sky-400 mt-1">${totalCajaHoy} <span className="text-[11px] text-zinc-500">MXN</span></div>
+                  <div className="text-zinc-500 text-[10px] uppercase font-mono tracking-wider">Utilidad Bruta</div>
+                  <div className="text-2xl font-bold font-mono text-sky-400 mt-1">${utilityReport.grossProfit} <span className="text-[11px] text-zinc-500">MXN</span></div>
                   <div className="text-[10px] text-zinc-400 mt-1.5">
-                    Metodos: Tarjeta <span className="text-zinc-200">${salesByPaymentMethod.Tarjeta}</span>, Efe <span className="text-zinc-200">${salesByPaymentMethod.Efectivo}</span>
+                    Margen bruto: <span className="text-sky-400 font-bold">{utilityReport.sales > 0 ? Math.round((utilityReport.grossProfit / utilityReport.sales) * 100) : 0}%</span>
                   </div>
                 </div>
 
                 <div className="p-4 bg-zinc-950 border border-zinc-850 rounded-xl relative overflow-hidden">
-                  <div className="text-zinc-500 text-[10px] uppercase font-mono tracking-wider">Ganancias Totales (Utilidad)</div>
-                  <div className="text-2xl font-bold font-mono text-emerald-400 mt-1">${utilityReport.profit} <span className="text-[11px] text-zinc-500">MXN</span></div>
+                  <div className="text-zinc-500 text-[10px] uppercase font-mono tracking-wider">Gastos Registrados</div>
+                  <div className="text-2xl font-bold font-mono text-amber-500 mt-1">${utilityReport.totalExpenses} <span className="text-[11px] text-zinc-500">MXN</span></div>
                   <div className="text-[10px] text-zinc-400 mt-1.5">
-                    Margen global de: <span className="text-emerald-400 font-bold">{Math.round((utilityReport.profit / utilityReport.sales) * 100)}%</span>
+                    Egresos por Caja Chica
+                  </div>
+                </div>
+
+                <div className="p-4 bg-zinc-950 border border-zinc-850 rounded-xl relative overflow-hidden">
+                  <div className="text-zinc-500 text-[10px] uppercase font-mono tracking-wider">Utilidad Neta Real</div>
+                  <div className="text-2xl font-bold font-mono text-emerald-400 mt-1">${utilityReport.netProfit} <span className="text-[11px] text-zinc-500">MXN</span></div>
+                  <div className="text-[10px] text-zinc-400 mt-1.5">
+                    Margen neto real: <span className="text-emerald-400 font-bold">{utilityReport.sales > 0 ? Math.round((utilityReport.netProfit / utilityReport.sales) * 100) : 0}%</span>
                   </div>
                 </div>
               </div>
@@ -1270,6 +1325,132 @@ export default function AdminDashboard({
                       </div>
                     </div>
                   ))}
+                </div>
+              </div>
+
+              {/* Control de Gastos & Caja Chica */}
+              <div className="p-4 bg-zinc-900 border border-zinc-800 rounded-xl space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-sky-400 flex items-center">
+                      <DollarSign className="w-4 h-4 mr-1.5 text-sky-400" />
+                      Control de Gastos & Caja Chica (Petty Cash)
+                    </h3>
+                    <p className="text-[11px] text-zinc-400 mt-0.5">Bitácora de egresos inmediatos para operación diaria del taller.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsAddingExpense(!isAddingExpense)}
+                    className="px-3 py-1 bg-zinc-800 hover:bg-zinc-750 text-zinc-200 border border-zinc-700 text-xs font-semibold rounded-lg flex items-center space-x-1"
+                  >
+                    <span>{isAddingExpense ? 'Ocultar Formulario' : '+ Registrar Gasto'}</span>
+                  </button>
+                </div>
+
+                {isAddingExpense && (
+                  <form onSubmit={handleSaveExpense} className="p-4 bg-zinc-950 border border-zinc-850 rounded-lg space-y-3 font-sans">
+                    <h4 className="text-xs font-bold text-zinc-300">Nuevo Egreso</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div>
+                        <label className="block text-[10px] text-zinc-500 uppercase font-mono mb-1">Categoría</label>
+                        <select
+                          value={expenseForm.category}
+                          onChange={e => setExpenseForm({ ...expenseForm, category: e.target.value })}
+                          className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-2 py-1.5 text-xs text-zinc-200 font-sans"
+                        >
+                          <option value="Insumos" className="bg-zinc-950 text-zinc-200">Insumos (Emergencias)</option>
+                          <option value="Limpieza" className="bg-zinc-950 text-zinc-200">Limpieza & Desengrasante</option>
+                          <option value="Herramientas" className="bg-zinc-950 text-zinc-200">Herramientas & Refacciones</option>
+                          <option value="Alimentos" className="bg-zinc-950 text-zinc-200">Alimentos & Café</option>
+                          <option value="Varios" className="bg-zinc-950 text-zinc-200">Varios / Servicios Públicos</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] text-zinc-500 uppercase font-mono mb-1">Descripción / Concepto</label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="Ej. Compra de desarmadores de cruz"
+                          value={expenseForm.description}
+                          onChange={e => setExpenseForm({ ...expenseForm, description: e.target.value })}
+                          className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-200"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] text-zinc-500 uppercase font-mono mb-1">Monto (MXN)</label>
+                        <input
+                          type="number"
+                          required
+                          min="1"
+                          placeholder="Monto $"
+                          value={expenseForm.amount || ''}
+                          onChange={e => setExpenseForm({ ...expenseForm, amount: Number(e.target.value) })}
+                          className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-200 font-mono"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end space-x-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => setIsAddingExpense(false)}
+                        className="px-3 py-1 bg-zinc-800 text-zinc-300 text-xs rounded"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        type="submit"
+                        className="px-4 py-1 bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-xs rounded"
+                      >
+                        Registrar Egreso
+                      </button>
+                    </div>
+                  </form>
+                )}
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="border-b border-zinc-800 text-zinc-500 text-[10px] uppercase font-mono">
+                        <th className="py-2">Fecha</th>
+                        <th className="py-2">Categoría</th>
+                        <th className="py-2">Concepto / Descripción</th>
+                        <th className="py-2 text-right">Monto</th>
+                        <th className="py-2 text-right">Acción</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-800/50">
+                      {expenses.map(exp => (
+                        <tr key={exp.id} className="hover:bg-zinc-950/40 text-zinc-300">
+                          <td className="py-2 font-mono text-[11px] text-zinc-500">{exp.date}</td>
+                          <td className="py-2 font-mono text-[11px]">
+                            <span className="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 font-semibold text-[10px]">
+                              {exp.category}
+                            </span>
+                          </td>
+                          <td className="py-2 font-medium">{exp.description}</td>
+                          <td className="py-2 text-right font-mono font-bold text-red-400">-${exp.amount} MXN</td>
+                          <td className="py-2 text-right">
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteExpense(exp.id)}
+                              className="text-zinc-500 hover:text-red-400 p-1"
+                              title="Eliminar registro"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                      {expenses.length === 0 && (
+                        <tr>
+                          <td colSpan={5} className="py-4 text-center text-zinc-500 italic">No hay gastos registrados en esta sesión.</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
                 </div>
               </div>
 
