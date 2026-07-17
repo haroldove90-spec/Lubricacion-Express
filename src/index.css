@@ -1,0 +1,185 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  /* Redefine zinc scale to be beautiful slate light-theme colors */
+  --color-zinc-50: #0f172a;
+  --color-zinc-100: #1e293b;
+  --color-zinc-200: #334155;
+  --color-zinc-300: #475569;
+  --color-zinc-400: #64748b;
+  --color-zinc-500: #94a3b8;
+  --color-zinc-600: #cbd5e1;
+  --color-zinc-700: #e2e8f0;
+  --color-zinc-800: #f1f5f9;
+  --color-zinc-850: #f8fafc;
+  --color-zinc-900: #ffffff;
+  --color-zinc-950: #f8fafc;
+
+  /* Redefine sky brand scale to amber brand scale */
+  --color-sky-50: #fffbeb;
+  --color-sky-100: #fef3c7;
+  --color-sky-200: #fde68a;
+  --color-sky-300: #fcd34d;
+  --color-sky-400: #f59e0b; /* amber-500 */
+  --color-sky-500: #d97706; /* amber-600 */
+  --color-sky-600: #b45309; /* amber-700 */
+  --color-sky-700: #92400e;
+  --color-sky-800: #78350f;
+  --color-sky-900: #451a03;
+  --color-sky-950: #2c1201;
+
+  /* Redefine blue to amber as well for consistency */
+  --color-blue-50: #fffbeb;
+  --color-blue-100: #fef3c7;
+  --color-blue-200: #fde68a;
+  --color-blue-300: #fcd34d;
+  --color-blue-400: #f59e0b;
+  --color-blue-500: #d97706;
+  --color-blue-600: #b45309;
+  --color-blue-700: #92400e;
+  --color-blue-800: #78350f;
+  --color-blue-900: #451a03;
+  --color-blue-950: #2c1201;
+}
+
+/* --- Clean Utility / Minimal Design Theme Custom Overrides --- */
+
+/* Reset native scrollbar to match clean utility aesthetic */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Base Body settings */
+body {
+  background-color: #f8fafc !important;
+  color: #1e293b !important;
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif !important;
+}
+
+/* Form element fixes to ensure maximum legibility and gorgeous sleekness */
+input, select, textarea {
+  background-color: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  color: #0f172a !important;
+  border-radius: 0.5rem !important;
+  transition: all 0.2s ease !important;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.02) !important;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: #f59e0b !important;
+  outline: none !important;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.15) !important;
+}
+
+/* Fix option values inside select tags so they don't render black-on-black or invisible */
+select option {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  padding: 8px !important;
+}
+
+/* Make lists and checklist items look premium and clean */
+.border-dashed {
+  border-style: dashed !important;
+  border-color: #cbd5e1 !important;
+}
+
+/* Table styling premium utility overrides */
+table {
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+}
+
+th {
+  background-color: #f1f5f9 !important;
+  color: #475569 !important;
+  font-weight: 600 !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+
+td {
+  border-bottom: 1px solid #f1f5f9 !important;
+  color: #334155 !important;
+}
+
+tr:hover td {
+  background-color: #f8fafc !important;
+}
+
+/* Alert boxes standard layout */
+.bg-amber-500\/10 {
+  background-color: #fef3c7 !important;
+  border-color: #fcd34d !important;
+}
+.text-amber-400 {
+  color: #b45309 !important;
+}
+
+/* Force dark button text readability */
+button.bg-slate-900, 
+button.bg-slate-950,
+button.bg-slate-800,
+.bg-slate-900,
+.bg-slate-950 {
+  color: #ffffff !important;
+}
+
+button.bg-sky-500,
+button.bg-blue-500,
+button.bg-amber-500,
+.bg-sky-500,
+.bg-blue-500,
+.bg-amber-500 {
+  color: #ffffff !important;
+}
+
+/* Fix status badges */
+.text-emerald-400 {
+  color: #047857 !important;
+}
+.bg-emerald-500\/10 {
+  background-color: #d1fae5 !important;
+  color: #065f46 !important;
+}
+.text-red-400 {
+  color: #b91c1c !important;
+}
+.bg-red-500\/10 {
+  background-color: #fee2e2 !important;
+  color: #991b1b !important;
+}
+
+/* Adjust shadows and hover effects */
+.shadow-xl {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.03), 0 2px 4px -1px rgba(0, 0, 0, 0.02), 0 10px 15px -3px rgba(0, 0, 0, 0.03) !important;
+}
+.shadow-2xl {
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.04), 0 8px 10px -6px rgba(0, 0, 0, 0.04) !important;
+}
+.border-zinc-800\/80,
+.border-zinc-850,
+.border-zinc-800,
+.border-zinc-700 {
+  border-color: #e2e8f0 !important;
+}
+
+/* Selection list item hover */
+.hover\:border-sky-500\/40:hover {
+  border-color: #f59e0b !important;
+}

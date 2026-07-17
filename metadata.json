@@ -1,0 +1,6 @@
+{
+  "name": "Lubricación Express",
+  "description": "Dashboard de administración y punto de venta para taller de lubricación exprés.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

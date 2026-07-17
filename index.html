@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lubricación express</title>
+    <!-- Inline Web App Manifest (PWA) -->
+    <link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%22Lubricaci%C3%B3n%20Express%22%2C%22short_name%22%3A%22LubeExpress%22%2C%22description%22%3A%22Taller%20de%20Lubricaci%C3%B3n%20Expr%C3%A9s%22%2C%22start_url%22%3A%22%2F%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%230a0a0a%22%2C%22theme_color%22%3A%22%2338bdf8%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fsvg%2Bxml%3Butf8%2C%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org/2000%2Fsvg%27%20viewBox%3D%270%200%20512%20512%27%20width%3D%27512%27%20height%3D%27512%27%3E%3Crect%20width%3D%27512%27%20height%3D%27512%27%20rx%3D%27100%27%20fill%3D%27%2523090d16%27%2F%3E%3Cpath%20d%3D%27M256%20120c-15%200-30%2015-40%2030-20%2030-40%2070-40%20100%200%2050%2035%2090%2080%2090s80-40%2080-90c0-30-20-70-40-100-10-15-25-30-40-30zm0%2040c10%200%2020%2010%2025%2020%2015%2025%2030%2055%2030%2080%200%2030-20%2050-55%2050s-55-20-55-50c0-25%2015-55%2030-80%205-10%2015-20%2025-20z%27%20fill%3D%27%252338bdf8%27%2F%3E%3C%2Fsvg%3E%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fsvg%2Bxml%22%7D%5D%7D" />
+    <meta name="theme-color" content="#38bdf8" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  </head>
+  <body class="bg-[#F8FAFC] text-[#1E293B] antialiased selection:bg-amber-500/25">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+    <!-- Simple inline Service Worker registration -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          const swContent = `
+            const CACHE_NAME = 'lube-express-v1';
+            self.addEventListener('install', (e) => {
+              e.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(['/'])));
+            });
+            self.addEventListener('fetch', (e) => {
+              e.respondWith(caches.match(e.request).then((res) => res || fetch(e.request)));
+            });
+          `;
+          const blob = new Blob([swContent], { type: 'application/javascript' });
+          const swUrl = URL.createObjectURL(blob);
+          navigator.serviceWorker.register(swUrl).catch(err => console.log('SW registration failed:', err));
+        });
+      }
+    </script>
+  </body>
+</html>
+
