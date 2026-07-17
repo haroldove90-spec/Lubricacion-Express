@@ -202,22 +202,22 @@ export default function App() {
               </div>
 
               {/* ROLE CHANNELS SELECTORS */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto w-full">
+              <div className="grid grid-cols-2 gap-4 sm:gap-8 max-w-4xl mx-auto w-full">
                 
                 {/* Channel 1: Propietario (Admin) */}
                 <button
                   id="home-btn-admin"
                   onClick={() => setCurrentRole('admin')}
-                  className="group relative p-8 sm:p-10 bg-white border border-slate-200 rounded-3xl text-center hover:shadow-xl hover:border-amber-500 transition-all cursor-pointer flex flex-col items-center"
+                  className="group relative p-4 sm:p-10 bg-white border border-slate-200 rounded-3xl text-center hover:shadow-xl hover:border-amber-500 transition-all cursor-pointer flex flex-col items-center"
                 >
-                  <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mb-6 group-hover:bg-amber-100 transition-colors">
-                    <Shield className="w-10 h-10 text-slate-600 group-hover:text-amber-600 transition-colors" />
+                  <div className="w-12 h-12 sm:w-20 sm:h-20 bg-slate-100 rounded-full flex items-center justify-center mb-3 sm:mb-6 group-hover:bg-amber-100 transition-colors">
+                    <Shield className="w-6 h-6 sm:w-10 sm:h-10 text-slate-600 group-hover:text-amber-600 transition-colors" />
                   </div>
-                  <h2 className="text-2xl font-bold text-slate-900 mb-2">Miguel</h2>
-                  <span className="px-3 py-1 bg-slate-900 text-white text-xs font-bold rounded-full uppercase tracking-wider mb-4">
+                  <h2 className="text-lg sm:text-2xl font-bold text-slate-900 mb-1 sm:mb-2">Miguel</h2>
+                  <span className="px-2.5 py-0.5 sm:px-3 sm:py-1 bg-slate-900 text-white text-[9px] sm:text-xs font-bold rounded-full uppercase tracking-wider mb-2 sm:mb-4">
                     Administrador
                   </span>
-                  <p className="text-slate-500 text-sm leading-relaxed">
+                  <p className="text-slate-500 text-[11px] sm:text-sm leading-snug sm:leading-relaxed">
                     Control total de inventario, finanzas, catálogos y reportes de rendimiento del taller.
                   </p>
                 </button>
@@ -226,16 +226,16 @@ export default function App() {
                 <button
                   id="home-btn-operator"
                   onClick={() => setCurrentRole('operator')}
-                  className="group relative p-8 sm:p-10 bg-white border border-slate-200 rounded-3xl text-center hover:shadow-xl hover:border-amber-500 transition-all cursor-pointer flex flex-col items-center"
+                  className="group relative p-4 sm:p-10 bg-white border border-slate-200 rounded-3xl text-center hover:shadow-xl hover:border-amber-500 transition-all cursor-pointer flex flex-col items-center"
                 >
-                  <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mb-6 group-hover:bg-amber-100 transition-colors">
-                    <Wrench className="w-10 h-10 text-slate-600 group-hover:text-amber-600 transition-colors" />
+                  <div className="w-12 h-12 sm:w-20 sm:h-20 bg-slate-100 rounded-full flex items-center justify-center mb-3 sm:mb-6 group-hover:bg-amber-100 transition-colors">
+                    <Wrench className="w-6 h-6 sm:w-10 sm:h-10 text-slate-600 group-hover:text-amber-600 transition-colors" />
                   </div>
-                  <h2 className="text-2xl font-bold text-slate-900 mb-2">Operadores</h2>
-                  <span className="px-3 py-1 bg-slate-500 text-white text-xs font-bold rounded-full uppercase tracking-wider mb-4">
+                  <h2 className="text-lg sm:text-2xl font-bold text-slate-900 mb-1 sm:mb-2">Operadores</h2>
+                  <span className="px-2.5 py-0.5 sm:px-3 sm:py-1 bg-slate-500 text-white text-[9px] sm:text-xs font-bold rounded-full uppercase tracking-wider mb-2 sm:mb-4">
                     Personal de Taller
                   </span>
-                  <p className="text-slate-500 text-sm leading-relaxed">
+                  <p className="text-slate-500 text-[11px] sm:text-sm leading-snug sm:leading-relaxed">
                     Recepción de vehículos, checklist de inspección y registro rápido de servicios y órdenes.
                   </p>
                 </button>
